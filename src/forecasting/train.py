@@ -25,8 +25,6 @@ TARGET = "sales"
 def prepare_data(df):
     """
     Prepare features and target for forecasting.
-
-    Important:
     - Data is sorted chronologically.
     - Target variable 'sales' is removed from X.
     - Date-related categorical variables are encoded.
@@ -35,17 +33,15 @@ def prepare_data(df):
 
     df = df.copy()
 
-    # ------------------------------------------------
+    
     # Convert date
-    # ------------------------------------------------
 
     df["date"] = pd.to_datetime(
         df["date"]
     )
 
-    # ------------------------------------------------
+
     # Sort chronologically
-    # ------------------------------------------------
 
     df = df.sort_values(
         "date"
@@ -53,10 +49,9 @@ def prepare_data(df):
         drop=True
     )
 
-    # ------------------------------------------------
     # Remove columns that should NOT directly
     # enter the forecasting model
-    # ------------------------------------------------
+
 
     drop_columns = [
         "sales",
@@ -76,9 +71,8 @@ def prepare_data(df):
 
     y = df[TARGET]
 
-    # ------------------------------------------------
+
     # Convert categorical columns
-    # ------------------------------------------------
 
     categorical_columns = [
         col
@@ -98,15 +92,11 @@ def prepare_data(df):
             drop_first=True
         )
 
-    # ------------------------------------------------
     # Convert everything to numeric
-    # ------------------------------------------------
 
     X = X.astype(float)
 
-    # ------------------------------------------------
     # Handle missing values
-    # ------------------------------------------------
 
     X = X.fillna(0)
 
@@ -130,9 +120,8 @@ def time_split(
         len(df) * train_ratio
     )
 
-    # ------------------------------------------------
+   
     # Split X and y using the same chronological index
-    # ------------------------------------------------
 
     X_train = X.iloc[:split_index]
     X_test = X.iloc[split_index:]
@@ -140,9 +129,8 @@ def time_split(
     y_train = y.iloc[:split_index]
     y_test = y.iloc[split_index:]
 
-    # ------------------------------------------------
+
     # Print split information
-    # ------------------------------------------------
 
     print("\nTime-Series Train/Test Split")
     print("=" * 60)
@@ -199,17 +187,17 @@ def train_models(
         exist_ok=True
     )
 
-    # ------------------------------------------------
+
     # Prepare data
-    # ------------------------------------------------
+
 
     X, y = prepare_data(
         df
     )
 
-    # ------------------------------------------------
+
     # Time-based split
-    # ------------------------------------------------
+  
 
     X_train, X_test, y_train, y_test = time_split(
         X,
@@ -217,9 +205,8 @@ def train_models(
         df
     )
 
-    # ------------------------------------------------
+  
     # Diagnostic information
-    # ------------------------------------------------
 
     print("\nForecasting Dataset")
     print("=" * 60)
@@ -256,9 +243,8 @@ def train_models(
         y_test.describe()
     )
 
-    # ------------------------------------------------
+
     # Check potential sales leakage
-    # ------------------------------------------------
 
     sales_related_features = [
         col
@@ -279,15 +265,14 @@ def train_models(
             f"  - {feature}"
         )
 
-    # ------------------------------------------------
+   
     # Models dictionary
-    # ------------------------------------------------
 
     models = {}
 
-    # =================================================
+ 
     # Ridge Regression
-    # =================================================
+
 
     print(
         "\nTraining Ridge Regression..."
@@ -313,9 +298,8 @@ def train_models(
 
     models["ridge"] = ridge
 
-    # =================================================
+   
     # Gradient Boosting
-    # =================================================
 
     print(
         "Training Gradient Boosting..."
@@ -337,9 +321,8 @@ def train_models(
         "gradient_boosting"
     ] = gradient_boosting
 
-    # =================================================
+ 
     # XGBoost
-    # =================================================
 
     if XGBOOST_AVAILABLE:
 
@@ -373,9 +356,8 @@ def train_models(
             "XGBoost is not installed. Skipping XGBoost."
         )
 
-    # =================================================
+  
     # Save trained models
-    # =================================================
 
     print(
         "\nSaving models..."
@@ -397,9 +379,8 @@ def train_models(
             f"Saved: {model_path}"
         )
 
-    # =================================================
+
     # Save feature names
-    # =================================================
 
     feature_path = (
         model_dir /

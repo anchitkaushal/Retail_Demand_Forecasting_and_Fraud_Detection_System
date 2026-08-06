@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def plot_fraud_probabilities(
-    predictions_path="reports/fraud_predictions.csv",
+    predictions_path="reports/predictions/fraud_predictions.csv",
     output_dir="reports/figures"
 ):
 

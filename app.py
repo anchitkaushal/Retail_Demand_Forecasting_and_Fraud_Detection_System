@@ -1,956 +1,391 @@
-# app.py
-
-from pathlib import Path
-
-import streamlit as st
-import pandas as pd
-import numpy as np
 import joblib
-import plotly.express as px
-import plotly.graph_objects as go
+from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import streamlit as st
 
+from src.forecasting.predict import forecast_future
+from src.fraud.predict import predict_fraud
 
-# ============================================================
+# -----------------------------------------------------------------------------
 # PAGE CONFIGURATION
-# ============================================================
-
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Retail Demand Forecasting & Fraud Detection",
-    page_icon="🛒",
+    page_title="Retail AI System",
+    page_icon="📊",
     layout="wide"
 )
 
-
-# ============================================================
-# PROJECT PATHS
-# ============================================================
-
-BASE_DIR = Path(__file__).resolve().parent
-
-DATA_DIR = BASE_DIR / "data"
-MODEL_DIR = BASE_DIR / "models"
-REPORT_DIR = BASE_DIR / "reports"
-
-PROCESSED_DIR = DATA_DIR / "processed"
-SIMULATED_DIR = DATA_DIR / "simulated"
-
-TABLE_DIR = REPORT_DIR / "tables"
-PREDICTION_DIR = REPORT_DIR / "predictions"
-
-
-# ============================================================
-# HELPER FUNCTIONS
-# ============================================================
-
-@st.cache_data
-def load_forecasting_data():
-
-    path = PROCESSED_DIR / "forecasting_features.csv"
-
-    if not path.exists():
-        return None
-
-    df = pd.read_csv(path)
-
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
-
-    return df
-
-
-@st.cache_data
-def load_forecast_predictions():
-
-    path = PREDICTION_DIR / "forecast_predictions.csv"
-
-    if not path.exists():
-
-        # Backward compatibility with your old location
-        path = REPORT_DIR / "forecast_predictions.csv"
-
-    if not path.exists():
-        return None
-
-    df = pd.read_csv(path)
-
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
-
-    return df
-
-
-@st.cache_data
-def load_forecasting_results():
-
-    path = TABLE_DIR / "forecasting_results.csv"
-
-    if not path.exists():
-        return None
-
-    return pd.read_csv(path)
-
-
-@st.cache_data
-def load_fraud_data():
-
-    path = SIMULATED_DIR / "fraud_transactions.csv"
-
-    if not path.exists():
-        return None
-
-    return pd.read_csv(path)
-
-
-@st.cache_data
-def load_fraud_predictions():
-
-    path = PREDICTION_DIR / "fraud_predictions.csv"
-
-    if not path.exists():
-
-        # Backward compatibility
-        path = REPORT_DIR / "fraud_predictions.csv"
-
-    if not path.exists():
-        return None
-
-    return pd.read_csv(path)
-
-
-@st.cache_data
-def load_fraud_results():
-
-    path = TABLE_DIR / "fraud_results.csv"
-
-    if not path.exists():
-        return None
-
-    return pd.read_csv(path)
-
-
-def format_number(value):
-
-    if value is None:
-        return "N/A"
-
-    if isinstance(value, (int, float, np.integer, np.floating)):
-
-        if abs(value) >= 1_000_000:
-            return f"{value / 1_000_000:.2f}M"
-
-        if abs(value) >= 1_000:
-            return f"{value:,.0f}"
-
-        return f"{value:.2f}"
-
-    return str(value)
-
-
-# ============================================================
-# LOAD DATA
-# ============================================================
-
-forecast_data = load_forecasting_data()
-forecast_predictions = load_forecast_predictions()
-forecast_results = load_forecasting_results()
-
-fraud_data = load_fraud_data()
-fraud_predictions = load_fraud_predictions()
-fraud_results = load_fraud_results()
-
-
-# ============================================================
-# SIDEBAR
-# ============================================================
-
-st.sidebar.title("🛒 Retail Analytics")
-
-st.sidebar.markdown(
+# -----------------------------------------------------------------------------
+# MODEL CACHING
+# -----------------------------------------------------------------------------
+@st.cache_resource
+def load_models():
     """
-    ### Retail Demand Forecasting
-    & Fraud Detection System
-
-    Use the dashboard to explore:
-
-    - Demand trends
-    - Forecasting performance
-    - Model predictions
-    - Fraud transactions
-    - Fraud detection performance
+    Cache model and feature paths.
     """
-)
+    forecasting_model_path = Path("models/ridge_forecasting_model.pkl")
+    forecasting_features_path = Path("models/forecasting_features.pkl")
+    fraud_model_path = Path("models/fraud_ann.pkl")
+    fraud_features_path = Path("models/fraud_features.pkl")
 
-st.sidebar.markdown("---")
+    return (
+        forecasting_model_path,
+        forecasting_features_path,
+        fraud_model_path,
+        fraud_features_path
+    )
 
+
+# -----------------------------------------------------------------------------
+# SIDEBAR & NAVIGATION
+# -----------------------------------------------------------------------------
+st.sidebar.title("🤖 Retail AI System")
 page = st.sidebar.radio(
     "Navigation",
-    [
-        "🏠 Overview",
-        "📈 Demand Forecasting",
-        "🚨 Fraud Detection",
-        "🔍 Data Exploration"
-    ]
+    ["Demand Forecasting", "Fraud Detection"]
 )
 
+st.title("Retail Demand Forecasting & Fraud Detection System")
 
-# ============================================================
-# HEADER
-# ============================================================
-
-st.title(
-    "🛒 Retail Demand Forecasting & Fraud Detection System"
-)
-
-st.caption(
-    "Machine Learning system for retail demand forecasting "
-    "and return-fraud anomaly detection"
-)
-
-st.markdown("---")
-
-
-# ============================================================
-# OVERVIEW
-# ============================================================
-
-if page == "🏠 Overview":
-
-    st.header("System Overview")
-
-    # --------------------------------------------------------
-    # Basic statistics
-    # --------------------------------------------------------
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    if forecast_data is not None:
-
-        total_sales = forecast_data["sales"].sum()
-
-        average_sales = forecast_data["sales"].mean()
-
-        max_sales = forecast_data["sales"].max()
-
-        total_days = forecast_data["date"].nunique()
-
-    else:
-
-        total_sales = 0
-        average_sales = 0
-        max_sales = 0
-        total_days = 0
-
-    if fraud_data is not None:
-
-        total_transactions = len(fraud_data)
-
-        fraud_count = fraud_data["is_fraud"].sum()
-
-        fraud_rate = (
-            fraud_count /
-            total_transactions *
-            100
-        )
-
-    else:
-
-        total_transactions = 0
-        fraud_count = 0
-        fraud_rate = 0
-
-    col1.metric(
-        "Total Sales",
-        format_number(total_sales)
+# -----------------------------------------------------------------------------
+# MODULE 1: DEMAND FORECASTING
+# -----------------------------------------------------------------------------
+if page == "Demand Forecasting":
+    st.subheader("📈 Retail Demand Forecasting")
+    st.markdown(
+        "Upload historical daily sales data to generate future demand predictions using trained inference pipelines."
     )
 
-    col2.metric(
-        "Average Daily Demand",
-        format_number(average_sales)
+    uploaded_file = st.file_uploader(
+        "Upload Historical Sales CSV (Required columns: date, sales)",
+        type=["csv"],
+        key="forecast_csv_uploader"
     )
 
-    col3.metric(
-        "Maximum Daily Demand",
-        format_number(max_sales)
-    )
-
-    col4.metric(
-        "Fraud Rate",
-        f"{fraud_rate:.2f}%"
-    )
-
-    st.markdown("---")
-
-    # --------------------------------------------------------
-    # Sales trend
-    # --------------------------------------------------------
-
-    if forecast_data is not None:
-
-        st.subheader("📈 Retail Demand Trend")
-
-        daily_sales = (
-            forecast_data
-            .groupby("date", as_index=False)["sales"]
-            .sum()
-        )
-
-        fig = px.line(
-            daily_sales,
-            x="date",
-            y="sales",
-            title="Daily Retail Demand"
-        )
-
-        fig.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Sales"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    # --------------------------------------------------------
-    # System components
-    # --------------------------------------------------------
-
-    st.subheader("System Components")
-
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-
-        st.markdown(
-            """
-            ### 📊 EDA & TSA
-
-            - Demand trends
-            - Weekly seasonality
-            - ACF analysis
-            - Event analysis
-            - Price analysis
-            """
-        )
-
-    with c2:
-
-        st.markdown(
-            """
-            ### 📈 Forecasting
-
-            Models:
-
-            - Ridge Regression
-            - Gradient Boosting
-            - XGBoost
-
-            Time-aware train/test split.
-            """
-        )
-
-    with c3:
-
-        st.markdown(
-            """
-            ### 🚨 Fraud Detection
-
-            Synthetic return transactions with:
-
-            - ANN classifier
-            - Fraud probability
-            - Precision
-            - Recall
-            - F1-score
-            - ROC-AUC
-            """
-        )
-
-
-# ============================================================
-# DEMAND FORECASTING
-# ============================================================
-
-elif page == "📈 Demand Forecasting":
-
-    st.header("📈 Demand Forecasting")
-
-    if forecast_data is None:
-
-        st.error(
-            "forecasting_features.csv was not found."
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Forecasting metrics
-    # --------------------------------------------------------
-
-    if forecast_results is not None:
-
-        st.subheader("Model Performance")
-
-        display_results = forecast_results.copy()
-
-        # Convert values for display only
-        st.dataframe(
-            display_results,
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # ----------------------------------------------------
-        # Best model
-        # ----------------------------------------------------
-
-        if "RMSE" in forecast_results.columns:
-
-            best_model = (
-                forecast_results
-                .sort_values("RMSE")
-                .iloc[0]
-            )
-
-            st.success(
-                f"Best model based on RMSE: "
-                f"**{best_model['Model']}**"
-            )
-
-            c1, c2, c3, c4 = st.columns(4)
-
-            c1.metric(
-                "Best Model",
-                str(best_model["Model"])
-            )
-
-            c2.metric(
-                "MAE",
-                f"{best_model['MAE']:.2f}"
-            )
-
-            c3.metric(
-                "RMSE",
-                f"{best_model['RMSE']:.2f}"
-            )
-
-            if "WMAPE" in best_model:
-
-                c4.metric(
-                    "WMAPE",
-                    f"{best_model['WMAPE']:.2f}%"
-                )
-
-    st.markdown("---")
-
-    # --------------------------------------------------------
-    # Actual vs predicted
-    # --------------------------------------------------------
-
-    st.subheader("Actual vs Forecast")
-
-    if forecast_predictions is not None:
-
-        prediction_df = forecast_predictions.copy()
-
-        # Try to detect actual/prediction columns
-        actual_col = None
-        predicted_col = None
-
-        for col in prediction_df.columns:
-
-            col_lower = col.lower()
-
-            if (
-                "actual" in col_lower
-                or col_lower == "sales"
-            ):
-                actual_col = col
-
-            if (
-                "prediction" in col_lower
-                or "predicted" in col_lower
-                or col_lower == "forecast"
-            ):
-                predicted_col = col
-
-        if (
-            actual_col is not None
-            and predicted_col is not None
-        ):
-
-            if "date" in prediction_df.columns:
-
-                fig = go.Figure()
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=prediction_df["date"],
-                        y=prediction_df[actual_col],
-                        mode="lines",
-                        name="Actual"
-                    )
-                )
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=prediction_df["date"],
-                        y=prediction_df[predicted_col],
-                        mode="lines",
-                        name="Forecast"
-                    )
-                )
-
-                fig.update_layout(
-                    title="Actual vs Forecasted Demand",
-                    xaxis_title="Date",
-                    yaxis_title="Sales"
-                )
-
-                st.plotly_chart(
-                    fig,
-                    use_container_width=True
-                )
-
+    if "use_sample_forecast" not in st.session_state:
+        st.session_state["use_sample_forecast"] = False
+
+    if uploaded_file is not None:
+        st.session_state["use_sample_forecast"] = False
+
+    if uploaded_file is None and not st.session_state["use_sample_forecast"]:
+        sample_path = Path("data/interim/daily_total_sales.csv")
+        if sample_path.exists():
+            st.info("💡 No CSV uploaded. Click below to load sample daily sales dataset for testing.")
+            if st.button("Load Sample Sales Data"):
+                st.session_state["use_sample_forecast"] = True
+                st.session_state["forecast_df"] = None
+                st.rerun()
+
+    use_sample = st.session_state["use_sample_forecast"] and (uploaded_file is None)
+
+    if use_sample:
+        col_s1, col_s2 = st.columns([4, 1])
+        with col_s1:
+            st.success("✅ Sample daily sales dataset loaded (`data/interim/daily_total_sales.csv`).")
+        with col_s2:
+            if st.button("Unload Sample Data", key="unload_forecast_sample"):
+                st.session_state["use_sample_forecast"] = False
+                st.session_state["forecast_df"] = None
+                st.rerun()
+
+    if uploaded_file is not None or use_sample:
+        try:
+            if uploaded_file is not None:
+                df_raw = pd.read_csv(uploaded_file)
             else:
+                df_raw = pd.read_csv("data/interim/daily_total_sales.csv")
 
-                st.warning(
-                    "Prediction file does not contain a date column."
+            if df_raw.empty:
+                st.error("Uploaded CSV file is empty.")
+                st.stop()
+
+            # Column validation
+            required_cols = ["date", "sales"]
+            missing_cols = [c for c in required_cols if c not in df_raw.columns]
+
+            if missing_cols:
+                st.error(
+                    f"Uploaded dataset is missing required column(s): {', '.join(missing_cols)}"
+                )
+                st.info("The forecasting dataset must contain at least `date` and `sales` columns.")
+                st.stop()
+
+            # Clean and prepare historical dataframe
+            df_clean = df_raw.copy()
+            df_clean["date"] = pd.to_datetime(df_clean["date"], errors="coerce")
+            df_clean["sales"] = pd.to_numeric(df_clean["sales"], errors="coerce")
+            df_clean = df_clean.dropna(subset=["date", "sales"]).sort_values("date").reset_index(drop=True)
+
+            if df_clean.empty:
+                st.error("No valid historical data rows were found after parsing dates and sales.")
+                st.stop()
+
+            # Dataset Overview
+            with st.container(border=True):
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Historical Rows", f"{len(df_clean):,}")
+                c2.metric("Total Columns", len(df_clean.columns))
+                c3.metric("Latest Available Date", str(df_clean["date"].max().date()))
+
+                with st.expander("Preview Historical Dataset", expanded=False):
+                    st.dataframe(df_clean.head(10))
+
+            # Horizon Selector
+            st.subheader("Forecast Settings")
+            horizon = st.slider(
+                "Select Forecast Horizon (Days)",
+                min_value=1,
+                max_value=90,
+                value=30,
+                step=1
+            )
+
+            # Generate Forecast Button
+            if st.button("Generate Forecast", type="primary"):
+                f_model_path, f_feature_path, _, _ = load_models()
+
+                if not f_model_path.exists() or not f_feature_path.exists():
+                    st.error("Saved forecasting model/feature files not found in models/ directory. Please run 'python main.py' to generate model artifacts.")
+                    st.stop()
+
+                try:
+                    with st.spinner(f"Generating recursive {horizon}-day demand forecast..."):
+                        forecast_df = forecast_future(
+                            df=df_clean,
+                            model_path=f_model_path,
+                            feature_path=f_feature_path,
+                            horizon=horizon
+                        )
+                    st.session_state["forecast_df"] = forecast_df
+                    st.session_state["forecast_horizon"] = horizon
+                except Exception as e:
+                    st.error(f"Failed to generate forecast: {str(e)}")
+
+            if st.session_state.get("forecast_df") is not None:
+                forecast_df = st.session_state["forecast_df"]
+                f_horizon = st.session_state.get("forecast_horizon", horizon)
+
+                st.success(f"Forecast generated successfully for next {len(forecast_df)} days!")
+
+                # Summary Metrics
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Forecast Horizon", f"{len(forecast_df)} Days")
+                m2.metric("Total Projected Sales", f"{forecast_df['forecast'].sum():,.0f}")
+                m3.metric("Average Daily Forecast", f"{forecast_df['forecast'].mean():,.0f}")
+                m4.metric("Peak Daily Forecast", f"{forecast_df['forecast'].max():,.0f}")
+
+                # Chart: Historical + Future Forecast
+                st.subheader("Demand Forecast Visualization")
+                recent_hist = df_clean.tail(180)
+
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.plot(
+                    recent_hist["date"],
+                    recent_hist["sales"],
+                    label="Historical Sales",
+                    color="#1f77b4",
+                    linewidth=1.5
+                )
+                ax.plot(
+                    forecast_df["date"],
+                    forecast_df["forecast"],
+                    label="Future Forecast",
+                    color="#ff7f0e",
+                    linestyle="--",
+                    linewidth=2.0
+                )
+                ax.axvline(
+                    x=recent_hist["date"].max(),
+                    color="gray",
+                    linestyle=":",
+                    alpha=0.8,
+                    label="Forecast Start"
+                )
+                ax.set_title("Retail Sales Demand - Historical vs Future Forecast", fontsize=12)
+                ax.set_xlabel("Date")
+                ax.set_ylabel("Sales")
+                ax.legend(loc="upper left")
+                ax.grid(True, linestyle="--", alpha=0.3)
+                fig.tight_layout()
+                st.pyplot(fig)
+
+                # Forecast Results Table
+                st.subheader("Forecast Data Table")
+                st.dataframe(forecast_df)
+
+                # CSV Download
+                csv_data = forecast_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Forecast CSV",
+                    data=csv_data,
+                    file_name=f"demand_forecast_{f_horizon}d.csv",
+                    mime="text/csv"
                 )
 
-        else:
+        except Exception as e:
+            st.error(f"Error reading or parsing uploaded file: {str(e)}")
 
-            st.warning(
-                "Could not automatically identify actual "
-                "and prediction columns."
-            )
 
-        with st.expander("View Forecast Predictions"):
-
-            st.dataframe(
-                prediction_df,
-                use_container_width=True
-            )
-
-    else:
-
-        st.warning(
-            "Forecast prediction file not found."
-        )
-
-    # --------------------------------------------------------
-    # Demand trend
-    # --------------------------------------------------------
-
-    st.subheader("Historical Demand")
-
-    daily_sales = (
-        forecast_data
-        .groupby("date", as_index=False)["sales"]
-        .sum()
+# -----------------------------------------------------------------------------
+# MODULE 2: FRAUD DETECTION
+# -----------------------------------------------------------------------------
+elif page == "Fraud Detection":
+    st.subheader("🚨 Transaction Fraud Detection")
+    st.markdown(
+        "Upload retail transaction records to evaluate fraud risk using the trained ANN classifier."
     )
 
-    fig = px.line(
-        daily_sales,
-        x="date",
-        y="sales",
-        title="Historical Daily Demand"
+    uploaded_file = st.file_uploader(
+        "Upload Transaction CSV",
+        type=["csv"],
+        key="fraud_csv_uploader"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    # --------------------------------------------------------
-    # Weekly seasonality
-    # --------------------------------------------------------
-
-    if "weekday" in forecast_data.columns:
-
-        st.subheader("Weekly Seasonality")
-
-        weekday_sales = (
-            forecast_data
-            .groupby("weekday", as_index=False)["sales"]
-            .mean()
-        )
-
-        fig = px.bar(
-            weekday_sales,
-            x="weekday",
-            y="sales",
-            title="Average Demand by Weekday"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-
-# ============================================================
-# FRAUD DETECTION
-# ============================================================
-
-elif page == "🚨 Fraud Detection":
-
-    st.header("🚨 Fraud Detection")
-
-    if fraud_data is None:
-
-        st.error(
-            "fraud_transactions.csv was not found."
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Fraud statistics
-    # --------------------------------------------------------
-
-    total_transactions = len(fraud_data)
-
-    fraud_count = int(
-        fraud_data["is_fraud"].sum()
-    )
-
-    normal_count = (
-        total_transactions -
-        fraud_count
-    )
-
-    fraud_rate = (
-        fraud_count /
-        total_transactions *
-        100
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric(
-        "Total Transactions",
-        f"{total_transactions:,}"
-    )
-
-    col2.metric(
-        "Normal Transactions",
-        f"{normal_count:,}"
-    )
-
-    col3.metric(
-        "Fraud Transactions",
-        f"{fraud_count:,}"
-    )
-
-    col4.metric(
-        "Fraud Rate",
-        f"{fraud_rate:.2f}%"
-    )
-
-    st.markdown("---")
-
-    # --------------------------------------------------------
-    # Class distribution
-    # --------------------------------------------------------
-
-    st.subheader("Fraud Class Distribution")
-
-    class_counts = (
-        fraud_data["is_fraud"]
-        .value_counts()
-        .reset_index()
-    )
-
-    class_counts.columns = [
-        "is_fraud",
-        "count"
-    ]
-
-    class_counts["label"] = (
-        class_counts["is_fraud"]
-        .map({
-            0: "Normal",
-            1: "Fraud"
-        })
-    )
-
-    fig = px.pie(
-        class_counts,
-        names="label",
-        values="count",
-        title="Normal vs Fraud Transactions"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    # --------------------------------------------------------
-    # Fraud model results
-    # --------------------------------------------------------
-
-    if fraud_results is not None:
-
-        st.subheader("ANN Model Performance")
-
-        st.dataframe(
-            fraud_results,
-            use_container_width=True,
-            hide_index=True
-        )
-
-        result = fraud_results.iloc[0]
-
-        c1, c2, c3, c4, c5 = st.columns(5)
-
-        c1.metric(
-            "Accuracy",
-            f"{result['Accuracy']:.3f}"
-        )
-
-        c2.metric(
-            "Precision",
-            f"{result['Precision']:.3f}"
-        )
-
-        c3.metric(
-            "Recall",
-            f"{result['Recall']:.3f}"
-        )
-
-        c4.metric(
-            "F1 Score",
-            f"{result['F1']:.3f}"
-        )
-
-        c5.metric(
-            "ROC-AUC",
-            f"{result['ROC_AUC']:.3f}"
-        )
-
-    st.markdown("---")
-
-    # --------------------------------------------------------
-    # Fraud probability
-    # --------------------------------------------------------
-
-    if fraud_predictions is not None:
-
-        st.subheader("Fraud Predictions")
-
-        prediction_df = fraud_predictions.copy()
-
-        if "fraud_probability" in prediction_df.columns:
-
-            fig = px.histogram(
-                prediction_df,
-                x="fraud_probability",
-                nbins=30,
-                title="Fraud Probability Distribution"
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
-
-        # ----------------------------------------------------
-        # Fraud transactions only
-        # ----------------------------------------------------
-
-        if "fraud_prediction" in prediction_df.columns:
-
-            fraud_only = prediction_df[
-                prediction_df["fraud_prediction"] == 1
-            ]
-
-            st.subheader(
-                f"🚨 Flagged Transactions ({len(fraud_only)})"
-            )
-
-            st.dataframe(
-                fraud_only,
-                use_container_width=True,
-                hide_index=True
-            )
-
-        with st.expander(
-            "View All Transaction Predictions"
-        ):
-
-            st.dataframe(
-                prediction_df,
-                use_container_width=True,
-                hide_index=True
-            )
-
-    else:
-
-        st.warning(
-            "Fraud prediction file was not found."
-        )
-
-
-# ============================================================
-# DATA EXPLORATION
-# ============================================================
-
-elif page == "🔍 Data Exploration":
-
-    st.header("🔍 Data Exploration")
-
-    if forecast_data is None:
-
-        st.error(
-            "Forecasting dataset was not found."
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Dataset information
-    # --------------------------------------------------------
-
-    st.subheader("Forecasting Dataset")
-
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric(
-        "Rows",
-        f"{forecast_data.shape[0]:,}"
-    )
-
-    c2.metric(
-        "Columns",
-        f"{forecast_data.shape[1]:,}"
-    )
-
-    c3.metric(
-        "Missing Values",
-        f"{forecast_data.isna().sum().sum():,}"
-    )
-
-    # --------------------------------------------------------
-    # Date filter
-    # --------------------------------------------------------
-
-    st.subheader("Date Filter")
-
-    min_date = forecast_data["date"].min().date()
-    max_date = forecast_data["date"].max().date()
-
-    selected_dates = st.date_input(
-        "Select date range",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date
-    )
-
-    if len(selected_dates) == 2:
-
-        start_date = pd.Timestamp(
-            selected_dates[0]
-        )
-
-        end_date = pd.Timestamp(
-            selected_dates[1]
-        )
-
-        filtered_data = forecast_data[
-            (
-                forecast_data["date"] >= start_date
-            )
-            &
-            (
-                forecast_data["date"] <= end_date
-            )
-        ]
-
-    else:
-
-        filtered_data = forecast_data
-
-    # --------------------------------------------------------
-    # Sales trend
-    # --------------------------------------------------------
-
-    st.subheader("Demand During Selected Period")
-
-    daily = (
-        filtered_data
-        .groupby("date", as_index=False)["sales"]
-        .sum()
-    )
-
-    fig = px.line(
-        daily,
-        x="date",
-        y="sales",
-        title="Demand Trend"
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
-
-    # --------------------------------------------------------
-    # Event analysis
-    # --------------------------------------------------------
-
-    if "is_event" in filtered_data.columns:
-
-        st.subheader("Event vs Non-Event Demand")
-
-        event_data = (
-            filtered_data
-            .groupby("is_event")["sales"]
-            .mean()
-            .reset_index()
-        )
-
-        event_data["type"] = (
-            event_data["is_event"]
-            .map({
-                0: "Non-Event",
-                1: "Event"
-            })
-        )
-
-        fig = px.bar(
-            event_data,
-            x="type",
-            y="sales",
-            title="Average Demand: Event vs Non-Event"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    # --------------------------------------------------------
-    # Dataset preview
-    # --------------------------------------------------------
-
-    with st.expander("View Dataset"):
-
-        st.dataframe(
-            filtered_data,
-            use_container_width=True,
-            hide_index=True
-        )
-
-
-# ============================================================
-# FOOTER
-# ============================================================
-
-st.markdown("---")
-
-st.caption(
-    "Retail Demand Forecasting + Fraud Detection System | "
-    "Machine Learning Project"
-)
+    if "use_sample_fraud" not in st.session_state:
+        st.session_state["use_sample_fraud"] = False
+
+    if uploaded_file is not None:
+        st.session_state["use_sample_fraud"] = False
+
+    if uploaded_file is None and not st.session_state["use_sample_fraud"]:
+        sample_path = Path("data/simulated/fraud_transactions.csv")
+        if sample_path.exists():
+            st.info("💡 No CSV uploaded. Click below to load simulated transaction dataset for testing.")
+            if st.button("Load Sample Fraud Data"):
+                st.session_state["use_sample_fraud"] = True
+                st.session_state["fraud_results_df"] = None
+                st.rerun()
+
+    use_sample = st.session_state["use_sample_fraud"] and (uploaded_file is None)
+
+    if use_sample:
+        col_s1, col_s2 = st.columns([4, 1])
+        with col_s1:
+            st.success("✅ Sample transaction dataset loaded (`data/simulated/fraud_transactions.csv`).")
+        with col_s2:
+            if st.button("Unload Sample Data", key="unload_fraud_sample"):
+                st.session_state["use_sample_fraud"] = False
+                st.session_state["fraud_results_df"] = None
+                st.rerun()
+
+    if uploaded_file is not None or use_sample:
+        try:
+            if uploaded_file is not None:
+                df_raw = pd.read_csv(uploaded_file)
+            else:
+                df_raw = pd.read_csv("data/simulated/fraud_transactions.csv")
+
+            if df_raw.empty:
+                st.error("Uploaded transaction file is empty.")
+                st.stop()
+
+            _, _, fraud_model_path, fraud_feature_path = load_models()
+
+            if not fraud_model_path.exists() or not fraud_feature_path.exists():
+                st.error("Saved fraud ANN model/feature files not found in models/ directory. Please run 'python main.py' to train models first.")
+                st.stop()
+
+            feature_names = joblib.load(fraud_feature_path)
+
+            # Feature validation
+            missing_features = [f for f in feature_names if f not in df_raw.columns]
+            if missing_features:
+                st.error(
+                    f"Uploaded dataset is missing required fraud feature(s): {', '.join(missing_features)}"
+                )
+                st.info(f"Required transaction features: {', '.join(feature_names)}")
+                st.stop()
+
+            with st.container(border=True):
+                st.write(f"Dataset preview ({len(df_raw):,} transactions):")
+                st.dataframe(df_raw.head(10))
+
+            if st.button("Run Fraud Detection", type="primary"):
+                try:
+                    with st.spinner("Analyzing transaction risk with Neural Network..."):
+                        results_df = predict_fraud(
+                            df=df_raw,
+                            model_path=fraud_model_path,
+                            feature_path=fraud_feature_path
+                        )
+                    st.session_state["fraud_results_df"] = results_df
+                except Exception as e:
+                    st.error(f"Error executing fraud prediction: {str(e)}")
+
+            if st.session_state.get("fraud_results_df") is not None:
+                results_df = st.session_state["fraud_results_df"]
+                st.success("Fraud evaluation complete!")
+
+                # Summary Metrics
+                total_tx = len(results_df)
+                fraud_detected = int((results_df["fraud_prediction"] == 1).sum())
+                fraud_pct = (fraud_detected / total_tx * 100) if total_tx > 0 else 0.0
+                high_risk_cnt = int((results_df["risk_level"] == "HIGH").sum())
+
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Total Transactions", f"{total_tx:,}")
+                c2.metric("Fraud Detected", f"{fraud_detected:,}")
+                c3.metric("Fraud Percentage", f"{fraud_pct:.2f}%")
+                c4.metric("High-Risk Transactions", f"{high_risk_cnt:,}")
+
+                # Tabular Output
+                tab1, tab2 = st.tabs(["All Predictions", "High-Risk Transactions Only"])
+
+                with tab1:
+                    st.subheader("Complete Prediction Results")
+                    st.dataframe(results_df)
+
+                with tab2:
+                    st.subheader("High-Risk Transactions (Probability ≥ 0.75)")
+                    high_risk_df = results_df[results_df["risk_level"] == "HIGH"]
+                    if high_risk_df.empty:
+                        st.info("No high-risk transactions detected.")
+                    else:
+                        st.dataframe(high_risk_df)
+
+                # Visualizations
+                st.subheader("Fraud Risk Visualizations")
+                col_vis1, col_vis2 = st.columns(2)
+
+                with col_vis1:
+                    fig, ax = plt.subplots(figsize=(5, 3.5))
+                    ax.hist(
+                        results_df["fraud_probability"],
+                        bins=20,
+                        color="#d62728",
+                        edgecolor="black",
+                        alpha=0.7
+                    )
+                    ax.set_title("Fraud Probability Distribution", fontsize=10)
+                    ax.set_xlabel("Probability")
+                    ax.set_ylabel("Transaction Count")
+                    ax.grid(True, linestyle="--", alpha=0.3)
+                    fig.tight_layout()
+                    st.pyplot(fig)
+
+                with col_vis2:
+                    risk_counts = results_df["risk_level"].value_counts().reindex(["LOW", "MEDIUM", "HIGH"]).fillna(0)
+                    fig, ax = plt.subplots(figsize=(5, 3.5))
+                    colors = ["#2ca02c", "#ff7f0e", "#d62728"]
+                    ax.bar(risk_counts.index, risk_counts.values, color=colors, edgecolor="black", alpha=0.8)
+                    ax.set_title("Risk Level Classification", fontsize=10)
+                    ax.set_xlabel("Risk Level")
+                    ax.set_ylabel("Transaction Count")
+                    ax.grid(True, linestyle="--", alpha=0.3, axis="y")
+                    fig.tight_layout()
+                    st.pyplot(fig)
+
+                # Download CSV
+                csv_data = results_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Fraud Results CSV",
+                    data=csv_data,
+                    file_name="fraud_detection_results.csv",
+                    mime="text/csv"
+                )
+
+        except Exception as e:
+            st.error(f"Error processing uploaded transaction file: {str(e)}")

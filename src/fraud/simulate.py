@@ -15,7 +15,7 @@ def simulate_fraud_data(
     output_path="data/simulated/fraud_transactions.csv"
 ):
     """
-    Generate a synthetic retail return/fraud dataset.
+    Generating a synthetic retail return/fraud dataset.
 
     Fraudulent transactions intentionally overlap with
     normal transactions so that the classification problem
@@ -26,10 +26,9 @@ def simulate_fraud_data(
         random_state
     )
 
-    # ------------------------------------------------
+    
     # Number of transactions
-    # ------------------------------------------------
-
+ 
     n_fraud = int(
         n_transactions * fraud_rate
     )
@@ -39,9 +38,8 @@ def simulate_fraud_data(
         n_fraud
     )
 
-    # =================================================
+    
     # NORMAL TRANSACTIONS
-    # =================================================
 
     normal = pd.DataFrame({
 
@@ -110,9 +108,8 @@ def simulate_fraud_data(
         "is_fraud": 0
     })
 
-    # =================================================
+
     # FRAUDULENT TRANSACTIONS
-    # =================================================
 
     fraud = pd.DataFrame({
 
@@ -181,9 +178,8 @@ def simulate_fraud_data(
         "is_fraud": 1
     })
 
-    # =================================================
+    
     # Combine
-    # =================================================
 
     df = pd.concat(
         [
@@ -201,9 +197,8 @@ def simulate_fraud_data(
         drop=True
     )
 
-    # =================================================
+
     # Save
-    # =================================================
 
     output_path = Path(
         output_path

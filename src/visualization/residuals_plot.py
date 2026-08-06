@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def plot_residuals(
-    predictions_path="reports/forecast_predictions.csv",
+    predictions_path="reports/predictions/forecast_predictions.csv",
     output_dir="reports/figures"
 ):
 
@@ -27,15 +27,23 @@ def plot_residuals(
     prediction_columns = [
         col
         for col in df.columns
-        if col.endswith("_prediction")
+        if col.endswith("_prediction") or col.startswith("predicted_") or col == "predicted_sales"
     ]
 
     for column in prediction_columns:
 
-        model_name = column.replace(
-            "_prediction",
-            ""
-        )
+        if column.endswith("_prediction"):
+            model_name = column.replace(
+                "_prediction",
+                ""
+            )
+        elif column.startswith("predicted_"):
+            model_name = column.replace(
+                "predicted_",
+                ""
+            )
+        else:
+            model_name = column
 
         residuals = (
             df["sales"] -

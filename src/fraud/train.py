@@ -30,25 +30,22 @@ def train_fraud_model(
     Train ANN-based fraud detection model.
     """
 
-    # ------------------------------------------------
+    
     # Load data
-    # ------------------------------------------------
 
     df = pd.read_csv(
         input_path
     )
 
-    # ------------------------------------------------
+    
     # Features and target
-    # ------------------------------------------------
 
     X = df[FEATURES]
 
     y = df[TARGET]
 
-    # ------------------------------------------------
+    
     # Display class distribution
-    # ------------------------------------------------
 
     print(
         "\nFraud Training Dataset"
@@ -70,9 +67,8 @@ def train_fraud_model(
         f"Normal transactions: {(y == 0).sum()}"
     )
 
-    # ------------------------------------------------
+    
     # Train/test split
-    # ------------------------------------------------
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -90,9 +86,8 @@ def train_fraud_model(
         f"Testing samples : {len(X_test)}"
     )
 
-    # ------------------------------------------------
+    
     # ANN model
-    # ------------------------------------------------
 
     model = Pipeline([
 
@@ -116,9 +111,8 @@ def train_fraud_model(
         )
     ])
 
-    # ------------------------------------------------
+    
     # Train
-    # ------------------------------------------------
 
     print(
         "\nTraining ANN..."
@@ -129,9 +123,8 @@ def train_fraud_model(
         y_train
     )
 
-    # ------------------------------------------------
+    
     # Save model
-    # ------------------------------------------------
 
     model_path = Path(
         model_path
@@ -147,10 +140,9 @@ def train_fraud_model(
         model_path
     )
 
-    # ------------------------------------------------
-    # Save feature names
-    # ------------------------------------------------
 
+    # Save feature names
+    
     feature_path = (
         model_path.parent /
         "fraud_features.pkl"

@@ -31,3 +31,12 @@ Thumbs.db
 
 # Raw datasets
 data/raw/*.csv
+
+#interim datasets
+data/interim/*.csv
+
+#preprocessed datasets
+data/processed/*.csv
+
+#notebook datasets
+notebooks/data/interim/*.csv

@@ -25,10 +25,9 @@ def evaluate_fraud_model(
     Evaluate ANN fraud detection model.
     """
 
-    # ------------------------------------------------
+    
     # Predictions
-    # ------------------------------------------------
-
+    
     predictions = model.predict(
         X_test
     )
@@ -37,9 +36,8 @@ def evaluate_fraud_model(
         X_test
     )[:, 1]
 
-    # ------------------------------------------------
+
     # Metrics
-    # ------------------------------------------------
 
     accuracy = accuracy_score(
         y_test,
@@ -69,9 +67,8 @@ def evaluate_fraud_model(
         probabilities
     )
 
-    # ------------------------------------------------
+    
     # Print results
-    # ------------------------------------------------
 
     print(
         "\nFraud Detection Results"
@@ -123,9 +120,8 @@ def evaluate_fraud_model(
         f"ROC-AUC  : {roc_auc:.4f}"
     )
 
-    # ------------------------------------------------
+    
     # Results dataframe
-    # ------------------------------------------------
 
     results = pd.DataFrame([{
 
@@ -142,10 +138,9 @@ def evaluate_fraud_model(
         "ROC_AUC": roc_auc
     }])
 
-    # ------------------------------------------------
+    
     # Save
-    # ------------------------------------------------
-
+    
     output_path = Path(
         output_path
     )

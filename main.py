@@ -34,6 +34,17 @@ from src.fraud.predict import (
     predict_fraud
 )
 
+from src.visualization.forcasting_plots import(
+    plot_actual_vs_predicted
+)
+
+from src.visualization.fraud_plots import(
+    plot_fraud_probabilities
+)
+
+from src.visualization.residuals_plot import(
+    plot_residuals
+)
 
 
 # PROJECT PATHS
@@ -219,11 +230,17 @@ def run_fraud_pipeline():
         MODELS /
         "fraud_ann.pkl",
         REPORTS /
-        'prediction'/
+        'predictions'/
         "fraud_predictions.csv"
     )
 
 
+#Final Plots
+def plot_figures():
+    plot_actual_vs_predicted()
+    plot_fraud_probabilities()
+    plot_residuals()
+    return 
 
 # MAIN
 
@@ -245,6 +262,8 @@ def main():
     print("COMPLETE PIPELINE FINISHED")
     print("=" * 70)
 
+    plot_figures()
+    print("\n plots of actul vs prediction forcasting , fraud probabilities and residuals are saved in reports/figures ")
 
 if __name__ == "__main__":
     main()

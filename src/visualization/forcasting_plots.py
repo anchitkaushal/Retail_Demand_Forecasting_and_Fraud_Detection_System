@@ -5,7 +5,7 @@ import pandas as pd
 
 
 def plot_actual_vs_predicted(
-    predictions_path="reports/forecast_predictions.csv",
+    predictions_path="reports/predictions/forecast_predictions.csv",
     output_dir="reports/figures"
 ):
 
@@ -24,26 +24,32 @@ def plot_actual_vs_predicted(
         df["date"]
     )
 
-    # ------------------------------------------------
+    
     # Detect prediction columns
-    # ------------------------------------------------
 
     prediction_columns = [
         col
         for col in df.columns
-        if col.endswith("_prediction")
+        if col.endswith("_prediction") or col.startswith("predicted_") or col == "predicted_sales"
     ]
 
-    # ------------------------------------------------
+    
     # Plot every model
-    # ------------------------------------------------
 
     for column in prediction_columns:
 
-        model_name = column.replace(
-            "_prediction",
-            ""
-        )
+        if column.endswith("_prediction"):
+            model_name = column.replace(
+                "_prediction",
+                ""
+            )
+        elif column.startswith("predicted_"):
+            model_name = column.replace(
+                "predicted_",
+                ""
+            )
+        else:
+            model_name = column
 
         plt.figure(
             figsize=(14, 6)

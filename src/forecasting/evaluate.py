@@ -26,10 +26,9 @@ def calculate_metrics(y_true, y_pred):
         )
     )
 
-    # ------------------------------------------------
+
     # Safe MAPE
     # Ignore extremely small actual values
-    # ------------------------------------------------
 
     mask = np.abs(y_true) >= 100
 
@@ -45,9 +44,7 @@ def calculate_metrics(y_true, y_pred):
     else:
         mape = np.nan
 
-    # ------------------------------------------------
     # WMAPE
-    # ------------------------------------------------
 
     wmape = (
         np.sum(
