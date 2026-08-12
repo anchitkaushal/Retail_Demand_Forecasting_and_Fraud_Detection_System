@@ -59,20 +59,9 @@ def clean_calendar(calendar):
     - Handle missing event information
     - Create is_event
     - Sort chronologically
-
-    Parameters
-    ----------
-    calendar : pandas.DataFrame
-        Raw M5 calendar dataset.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Cleaned calendar dataset.
     """
 
     print("\nCleaning calendar dataset...")
-    print("-" * 50)
 
     # Work on a copy so original dataframe is not modified
     calendar = calendar.copy()
@@ -183,33 +172,21 @@ def clean_sales(sales):
     - Handle missing values
     - Handle negative demand
     - Convert demand to integer
+"""
 
-    Parameters
-    ----------
-    sales : pandas.DataFrame
-        Raw M5 sales dataset.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Cleaned sales dataset.
-    """
 
     print("\nCleaning sales dataset...")
-    print("-" * 50)
 
     # Work on a copy
     sales = sales.copy()
 
     # Remove duplicates
-
     sales = remove_duplicates(
         sales,
         "Sales dataset"
     )
 
     # Find daily sales columns
-
     sales_columns = [
         column
         for column in sales.columns
@@ -318,21 +295,8 @@ def clean_prices(prices):
     - Detect missing prices
     - Detect invalid/non-positive prices
     - Sort data
-
-    Parameters
-    ----------
-    prices : pandas.DataFrame
-        Raw M5 sell_prices dataset.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Cleaned sell_prices dataset.
     """
-
     print("\nCleaning sell price dataset...")
-    print("-" * 50)
-
     # Work on a copy
     prices = prices.copy()
 

@@ -8,18 +8,17 @@ import streamlit as st
 from src.forecasting.predict import forecast_future
 from src.fraud.predict import predict_fraud
 
-# -----------------------------------------------------------------------------
+
 # PAGE CONFIGURATION
-# -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Retail AI System",
     page_icon="📊",
     layout="wide"
 )
 
-# -----------------------------------------------------------------------------
+
 # MODEL CACHING
-# -----------------------------------------------------------------------------
+
 @st.cache_resource
 def load_models():
     """
@@ -38,9 +37,8 @@ def load_models():
     )
 
 
-# -----------------------------------------------------------------------------
 # SIDEBAR & NAVIGATION
-# -----------------------------------------------------------------------------
+
 st.sidebar.title("🤖 Retail AI System")
 page = st.sidebar.radio(
     "Navigation",
@@ -49,9 +47,9 @@ page = st.sidebar.radio(
 
 st.title("Retail Demand Forecasting & Fraud Detection System")
 
-# -----------------------------------------------------------------------------
+
 # MODULE 1: DEMAND FORECASTING
-# -----------------------------------------------------------------------------
+
 if page == "Demand Forecasting":
     st.subheader("📈 Retail Demand Forecasting")
     st.markdown(
@@ -229,9 +227,9 @@ if page == "Demand Forecasting":
             st.error(f"Error reading or parsing uploaded file: {str(e)}")
 
 
-# -----------------------------------------------------------------------------
+
 # MODULE 2: FRAUD DETECTION
-# -----------------------------------------------------------------------------
+
 elif page == "Fraud Detection":
     st.subheader("🚨 Transaction Fraud Detection")
     st.markdown(
