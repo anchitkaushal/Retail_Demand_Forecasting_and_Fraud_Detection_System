@@ -75,10 +75,6 @@ def evaluate_fraud_model(
     )
 
     print(
-        "=" * 60
-    )
-
-    print(
         classification_report(
             y_test,
             predictions,

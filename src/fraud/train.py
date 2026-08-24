@@ -27,7 +27,7 @@ def train_fraud_model(
     model_path="models/fraud_ann.pkl"
 ):
     """
-    Train ANN-based fraud detection model.
+    Training ANN-based fraud detection model.
     """
 
     
@@ -49,10 +49,6 @@ def train_fraud_model(
 
     print(
         "\nFraud Training Dataset"
-    )
-
-    print(
-        "=" * 50
     )
 
     print(
@@ -78,15 +74,7 @@ def train_fraud_model(
         stratify=y
     )
 
-    print(
-        f"\nTraining samples: {len(X_train)}"
-    )
-
-    print(
-        f"Testing samples : {len(X_test)}"
-    )
-
-    
+  
     # ANN model
 
     model = Pipeline([
@@ -111,7 +99,6 @@ def train_fraud_model(
         )
     ])
 
-    
     # Train
 
     print(
@@ -122,7 +109,6 @@ def train_fraud_model(
         X_train,
         y_train
     )
-
     
     # Save model
 

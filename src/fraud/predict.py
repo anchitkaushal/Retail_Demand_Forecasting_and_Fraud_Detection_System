@@ -13,7 +13,7 @@ def predict_fraud(
     output_path=None
 ):
     """
-    Generate fraud probabilities, predictions, and risk levels.
+    Generating fraud probabilities, predictions, and risk levels.
 
     Parameters:
         df: pd.DataFrame or str/Path (input transaction data)
@@ -31,7 +31,7 @@ def predict_fraud(
         output_path = feature_path
         feature_path = "models/fraud_features.pkl"
 
-    # 1. Load dataframe if path is given
+    # 1. Loading dataframe if path is given
     if isinstance(df, (str, Path)):
         df = pd.read_csv(df)
     else:

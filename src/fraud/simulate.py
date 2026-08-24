@@ -1,7 +1,5 @@
 # src/fraud/simulate.py
 
-# src/fraud/simulate.py
-
 from pathlib import Path
 
 import numpy as np
